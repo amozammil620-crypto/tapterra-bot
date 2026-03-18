@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TapsTerra Bot</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { 
+            background: radial-gradient(circle, #2c3e50, #000000); 
+            color: white; 
+            text-align: center; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .score-container {
+            margin-bottom: 20px;
+        }
+        p { font-size: 18px; color: #bdc3c7; margin-bottom: 5px; }
+        h1 { font-size: 50px; margin: 0; color: #f1c40f; text-shadow: 0 0 15px rgba(241, 196, 15, 0.6); }
+        .coin { 
+            width: 220px; 
+            cursor: pointer; 
+            transition: transform 0.1s; 
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .coin:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+    <div class="score-container">
+        <p>Total Coins</p>
+        <h1 id="score">0</h1>
+    </div>
+    
+    <img src="https://cdn-icons-png.flaticon.com/512/5408/5408431.png" class="coin" id="tapBtn" alt="Coin">
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVfY7eeafTsMuNqGEnf-_-dIeACif3yRI",
+            authDomain: "tapsterratry-ec73f.firebaseapp.com",
+            projectId: "tapsterratry-ec73f",
+            storageBucket: "tapsterratry-ec73f.firebasestorage.app",
+            messagingSenderId: "845980784275",
+            appId: "1:845980784275:web:7b50d4264927333a505f66",
+            databaseURL: "https://tapsterratry-ec73f-default-rtdb.firebaseio.com/"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let count = 0;
+        const scoreDisplay = document.getElementById('score');
+        const tapBtn = document.getElementById('tapBtn');
+
+        // Database se data fetch karna
+        db.ref('total_coins').on('value', (snapshot) => {
+            count = snapshot.val() || 0;
+            scoreDisplay.innerText = count.toLocaleString();
+        });
+
+        // Click event
+        tapBtn.onclick = () => {
+            count++;
+            scoreDisplay.innerText = count.toLocaleString();
+            db.ref('/').update({ total_coins: count });
+        };
+    </script>
+</body>
+</html>
+
