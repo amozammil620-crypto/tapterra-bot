@@ -3,40 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Tap Master Pro</title>
+    <title>Tap Terra - Energy Edition</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #1a1a2e; color: white; text-align: center; margin: 0; padding: 20px; touch-action: manipulation; }
-        .score { font-size: 40px; font-weight: bold; color: #ffd700; margin-bottom: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f0c29; background: linear-gradient(to bottom, #24243e, #302b63, #0f0c29); color: white; text-align: center; margin: 0; padding: 20px; overflow: hidden; touch-action: manipulation; }
+        .score-container { font-size: 45px; font-weight: 800; color: #f1c40f; margin-top: 20px; text-shadow: 0 0 15px rgba(241, 196, 15, 0.5); }
         
-        /* Energy Bottle Style */
-        .energy-container { width: 80%; background: #333; height: 25px; border-radius: 15px; margin: 20px auto; overflow: hidden; border: 2px solid #555; }
-        #energy-bar { width: 100%; height: 100%; background: linear-gradient(to right, #00f2fe, #4facfe); transition: width 0.3s; }
+        /* Bottle Style Energy Bar */
+        .bottle-container { width: 120px; height: 30px; background: #222; border: 3px solid #00d2ff; border-radius: 20px; margin: 20px auto; position: relative; overflow: hidden; box-shadow: 0 0 10px #00d2ff; }
+        #energy-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%); transition: width 0.3s ease; }
+        .energy-text { font-size: 14px; margin-top: 5px; color: #00d2ff; font-weight: bold; }
+
+        #coin-btn { width: 220px; height: 220px; background: radial-gradient(circle, #f1c40f, #d4af37); border-radius: 50%; border: 10px solid #b8860b; margin: 40px auto; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; cursor: pointer; box-shadow: 0 0 30px rgba(241, 196, 15, 0.4); transition: transform 0.1s; user-select: none; }
+        #coin-btn:active { transform: scale(0.92); }
+
+        .recharge-btn { display: none; background: #e74c3c; color: white; border: none; padding: 18px 40px; border-radius: 50px; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4); margin-top: 20px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         
-        #coin { width: 200px; height: 200px; background: radial-gradient(circle, #ffd700, #b8860b); border-radius: 50%; border: 8px solid #daa520; margin: 30px auto; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
-        #coin:active { transform: scale(0.95); }
-        
-        .btn { display: none; background: #e74c3c; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        #timer-text { display: none; font-size: 20px; color: #f1c40f; font-weight: bold; }
+        #timer-box { display: none; font-size: 22px; color: #ff9f43; margin-top: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="score">💰 <span id="coins">0</span></div>
+    <div class="score-container">💰 <span id="coin-count">0</span></div>
     
-    <div class="energy-container">
-        <div id="energy-bar"></div>
+    <div class="bottle-container">
+        <div id="energy-fill"></div>
     </div>
-    <div id="energy-text">Energy: 10/10</div>
+    <div class="energy-text">⚡ Energy: <span id="energy-val">10</span>/10</div>
 
-    <div id="coin" onclick="handleTap(event)">TAP</div>
+    <div id="coin-btn" onclick="handleTap(event)">TAP ME</div>
 
-    <button id="recharge-btn" class="btn" onclick="startRecharge()">⚡ Charge Energy</button>
-    <div id="timer-text">Refilling: <span id="seconds">20</span>s</div>
+    <button id="recharge-btn" class="recharge-btn" onclick="startRecharge()">⚡ RECHARGE NOW</button>
+    <div id="timer-box">Refilling: <span id="seconds">20</span>s</div>
 
     <script>
+        // --- APNI FIREBASE DETAILS YAHAN DALO ---
         const firebaseConfig = {
             apiKey: "AIzaSyAVfY7eeafTsMuNqGEnf-_-dIeACif3yRI",
             authDomain: "tapsterratry-ec73f.firebaseapp.com",
@@ -50,27 +54,28 @@
         const db = firebase.database();
 
         const tg = window.Telegram.WebApp;
-        const userId = tg.initDataUnsafe?.user?.id || "dev_user";
+        tg.expand();
+        const userId = tg.initDataUnsafe?.user?.id || "test_user";
         const userRef = db.ref('players/' + userId);
 
         let coins = 0;
         let energy = 10;
         let isRecharging = false;
 
+        // Firebase se Data Load karo (Real-time)
         userRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 coins = data.coins || 0;
-                energy = data.energy !== undefined ? data.energy : 10;
-                document.getElementById('coins').innerText = coins;
+                energy = (data.energy !== undefined) ? data.energy : 10;
+                document.getElementById('coin-count').innerText = coins;
                 
-                // Check Recharge Status
+                // Check if user is in recharge mode
                 if (data.rechargeFinishTime) {
                     const now = Date.now();
                     if (now < data.rechargeFinishTime) {
                         showTimer(data.rechargeFinishTime);
                     } else if (energy === 0) {
-                        // Time khatam par energy abhi bhi 0 hai (Auto-fill)
                         finishRecharge();
                     }
                 }
@@ -80,48 +85,46 @@
 
         function handleTap(e) {
             if (energy > 0 && !isRecharging) {
-                coins += 5;
+                coins += 5; // Har tap par 5 coins
                 energy -= 1;
                 userRef.update({ coins: coins, energy: energy });
-            } else if (energy === 0 && !isRecharging) {
-                alert("Energy khatam! Recharge karo.");
             }
         }
 
         function updateUI() {
-            document.getElementById('energy-bar').style.width = (energy * 10) + "%";
-            document.getElementById('energy-text').innerText = `Energy: ${energy}/10`;
+            document.getElementById('energy-fill').style.width = (energy * 10) + "%";
+            document.getElementById('energy-val').innerText = energy;
             
-            const coinBtn = document.getElementById('coin');
-            const rechargeBtn = document.getElementById('recharge-btn');
+            const btn = document.getElementById('coin-btn');
+            const rchg = document.getElementById('recharge-btn');
 
             if (energy === 0 && !isRecharging) {
-                coinBtn.style.display = "none";
-                rechargeBtn.style.display = "inline-block";
+                btn.style.display = "none";
+                rchg.style.display = "inline-block";
             } else if (isRecharging) {
-                coinBtn.style.display = "none";
-                rechargeBtn.style.display = "none";
+                btn.style.display = "none";
+                rchg.style.display = "none";
             } else {
-                coinBtn.style.display = "flex";
-                rechargeBtn.style.display = "none";
+                btn.style.display = "flex";
+                rchg.style.display = "none";
             }
         }
 
         function startRecharge() {
-            const finishTime = Date.now() + 20000; // 20 sec from now
+            const finishTime = Date.now() + 20000; // 20 Seconds Timer
             userRef.update({ rechargeFinishTime: finishTime });
         }
 
         function showTimer(finishTime) {
             isRecharging = true;
-            document.getElementById('timer-text').style.display = "block";
+            document.getElementById('timer-box').style.display = "block";
             
-            const interval = setInterval(() => {
+            const timerCheck = setInterval(() => {
                 const now = Date.now();
                 const timeLeft = Math.ceil((finishTime - now) / 1000);
 
                 if (timeLeft <= 0) {
-                    clearInterval(interval);
+                    clearInterval(timerCheck);
                     finishRecharge();
                 } else {
                     document.getElementById('seconds').innerText = timeLeft;
@@ -131,7 +134,7 @@
 
         function finishRecharge() {
             isRecharging = false;
-            document.getElementById('timer-text').style.display = "none";
+            document.getElementById('timer-box').style.display = "none";
             userRef.update({ energy: 10, rechargeFinishTime: null });
         }
     </script>
