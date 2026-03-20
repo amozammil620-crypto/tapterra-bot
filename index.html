@@ -3,36 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Tap Terra Fixed</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Tap Terra - Pro UI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: sans-serif; background: #0f0c29; color: white; text-align: center; margin: 0; padding: 20px; touch-action: manipulation; }
-        .score-container { font-size: 45px; font-weight: bold; color: #f1c40f; margin-top: 20px; }
-        .bottle-container { width: 150px; height: 35px; background: #222; border: 3px solid #00d2ff; border-radius: 20px; margin: 20px auto; overflow: hidden; }
-        #energy-fill { height: 100%; width: 100%; background: #00d2ff; transition: width 0.3s; }
-        #coin-btn { width: 200px; height: 200px; background: gold; border-radius: 50%; border: 8px solid #b8860b; margin: 40px auto; display: flex; align-items: center; justify-content: center; font-size: 24px; color: black; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); user-select: none; }
-        #coin-btn:active { transform: scale(0.95); }
-        .recharge-btn { display: none; background: #e74c3c; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-size: 18px; cursor: pointer; }
-        #timer-box { display: none; font-size: 20px; color: #ff9f43; margin-top: 20px; }
-        #loading-text { font-size: 18px; color: #aaa; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0c29; color: white; text-align: center; margin: 0; padding: 15px; overflow: hidden; }
+        
+        /* Stats Section */
+        .score-container { font-size: 45px; font-weight: bold; color: #f1c40f; margin: 20px 0; }
+        .bottle-outer { width: 160px; height: 30px; background: #222; border: 2px solid #00d2ff; border-radius: 20px; margin: 10px auto; overflow: hidden; }
+        #energy-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #00d2ff, #3a7bd5); transition: width 0.3s; }
+
+        /* Main Game Button */
+        #coin-btn { width: 220px; height: 220px; background: radial-gradient(circle, #f1c40f, #d4af37); border-radius: 50%; border: 10px solid #b8860b; margin: 30px auto; display: flex; align-items: center; justify-content: center; font-size: 26px; color: black; font-weight: 900; cursor: pointer; box-shadow: 0 0 25px rgba(241,196,15,0.5); user-select: none; transition: 0.1s; }
+        #coin-btn:active { transform: scale(0.92); }
+
+        /* Navigation Buttons */
+        .nav-buttons { margin-top: 30px; display: flex; justify-content: center; gap: 15px; }
+        .main-btn { background: #3498db; color: white; border: none; padding: 12px 25px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .withdraw-trigger { background: #2ecc71; }
+
+        /* Withdraw Modal (Popup) */
+        #withdraw-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; align-items: center; justify-content: center; }
+        .modal-content { background: #1a1a2e; padding: 30px; border-radius: 20px; border: 2px solid #2ecc71; width: 85%; max-width: 350px; }
+        input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 10px; border: none; font-size: 16px; }
+        .close-btn { background: #e74c3c; margin-top: 15px; padding: 8px 20px; border-radius: 8px; border: none; color: white; cursor: pointer; }
+        
+        .status-box { margin-top: 20px; font-size: 13px; color: #aaa; border-top: 1px solid #444; padding-top: 10px; }
+        .pending { color: #f1c40f; } .success { color: #2ecc71; font-weight: bold; }
+        #recharge-btn { background: #e74c3c; display: none; }
     </style>
 </head>
 <body>
 
-    <div id="loading-text">Syncing with Firebase...</div>
     <div class="score-container">💰 <span id="coin-count">0</span></div>
     
-    <div class="bottle-container">
-        <div id="energy-fill"></div>
+    <div class="bottle-outer"><div id="energy-fill"></div></div>
+    <div style="color:#00d2ff; font-size: 14px; font-weight: bold;">⚡ Energy: <span id="energy-val">10</span>/10</div>
+
+    <div id="coin-btn" onclick="handleTap()">TAP!</div>
+    <button id="recharge-btn" class="main-btn" onclick="startRecharge()">⚡ RECHARGE</button>
+
+    <div class="nav-buttons">
+        <button class="main-btn withdraw-trigger" onclick="openModal()">🏦 Withdraw</button>
     </div>
-    <div style="color:#00d2ff">⚡ Energy: <span id="energy-val">10</span>/10</div>
 
-    <div id="coin-btn" onclick="handleTap(event)">TAP</div>
-
-    <button id="recharge-btn" class="recharge-btn" onclick="startRecharge()">⚡ RECHARGE</button>
-    <div id="timer-box">Refilling: <span id="seconds">20</span>s</div>
+    <div id="withdraw-modal">
+        <div class="modal-content">
+            <h2 style="color:#2ecc71; margin-top:0;">Withdrawal</h2>
+            <p style="font-size:12px; color:#ccc;">Minimum 1000 Coins Required</p>
+            
+            <input type="text" id="upi-id" placeholder="Enter UPI ID">
+            <input type="number" id="wd-amount" placeholder="Amount of Coins">
+            
+            <button class="main-btn withdraw-trigger" style="width:100%;" onclick="requestWithdraw()">Submit Now</button>
+            
+            <div class="status-box">
+                <b>History:</b> <span id="wd-status">No requests</span>
+            </div>
+            
+            <button class="close-btn" onclick="closeModal()">✖ Close</button>
+        </div>
+    </div>
 
     <script>
         const firebaseConfig = {
@@ -48,94 +82,57 @@
         const db = firebase.database();
 
         const tg = window.Telegram.WebApp;
-        tg.expand();
         const userId = tg.initDataUnsafe?.user?.id || "dev_user";
         const userRef = db.ref('players/' + userId);
+        const wdRef = db.ref('withdrawals/' + userId);
 
-        let coins = 0;
-        let energy = 10;
-        let isRecharging = false;
-        let isLoaded = false; // Naya check
+        let coins = 0, energy = 10, isLoaded = false;
 
-        // Firebase se Live Update lena
-        userRef.on('value', (snapshot) => {
-            const data = snapshot.val();
+        userRef.on('value', (snap) => {
+            const data = snap.val();
             if (data) {
                 coins = data.coins || 0;
                 energy = (data.energy !== undefined) ? data.energy : 10;
-                
                 document.getElementById('coin-count').innerText = coins;
                 document.getElementById('energy-val').innerText = energy;
                 document.getElementById('energy-fill').style.width = (energy * 10) + "%";
-
-                if (data.rechargeFinishTime) {
-                    const now = Date.now();
-                    if (now < data.rechargeFinishTime) {
-                        showTimer(data.rechargeFinishTime);
-                    } else if (energy === 0) {
-                        finishRecharge();
-                    }
-                }
+                document.getElementById('coin-btn').style.display = (energy === 0) ? "none" : "flex";
+                document.getElementById('recharge-btn').style.display = (energy === 0) ? "inline-block" : "none";
             }
-            isLoaded = true; // Data mil gaya
-            document.getElementById('loading-text').style.display = "none";
-            updateUI();
+            isLoaded = true;
         });
 
-        function handleTap(e) {
-            if (!isLoaded) return; // Jab tak data na aaye, tap mat hone do
-            
-            if (energy > 0 && !isRecharging) {
-                const newCoins = coins + 5;
-                const newEnergy = energy - 1;
-                // Seedhe update karo, local variable par bharosa mat karo
-                userRef.update({ coins: newCoins, energy: newEnergy });
+        wdRef.on('value', (snap) => {
+            const wdData = snap.val();
+            if (wdData) {
+                document.getElementById('wd-status').innerHTML = `<br>Amt: ${wdData.amount} | <span class="${wdData.status.toLowerCase()}">${wdData.status}</span>`;
+            }
+        });
+
+        function handleTap() {
+            if (isLoaded && energy > 0) {
+                userRef.update({ coins: coins + 5, energy: energy - 1 });
             }
         }
 
-        function updateUI() {
-            const btn = document.getElementById('coin-btn');
-            const rchg = document.getElementById('recharge-btn');
+        function openModal() { document.getElementById('withdraw-modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('withdraw-modal').style.display = 'none'; }
 
-            if (energy === 0 && !isRecharging) {
-                btn.style.display = "none";
-                rchg.style.display = "inline-block";
-            } else if (isRecharging) {
-                btn.style.display = "none";
-                rchg.style.display = "none";
-            } else {
-                btn.style.display = "flex";
-                rchg.style.display = "none";
-            }
+        function requestWithdraw() {
+            const upi = document.getElementById('upi-id').value;
+            const amount = parseInt(document.getElementById('wd-amount').value);
+
+            if (!upi || amount < 1000) { alert("Invalid UPI or Min 1000 coins!"); return; }
+            if (coins < amount) { alert("Not enough coins!"); return; }
+
+            wdRef.set({ upi: upi, amount: amount, status: "Pending", timestamp: Date.now() })
+            .then(() => {
+                userRef.update({ coins: coins - amount });
+                alert("Request Sent Successfully!");
+            });
         }
 
-        function startRecharge() {
-            const finishTime = Date.now() + 20000;
-            userRef.update({ rechargeFinishTime: finishTime });
-        }
-
-        function showTimer(finishTime) {
-            isRecharging = true;
-            document.getElementById('timer-box').style.display = "block";
-            
-            const timerCheck = setInterval(() => {
-                const now = Date.now();
-                const timeLeft = Math.ceil((finishTime - now) / 1000);
-
-                if (timeLeft <= 0) {
-                    clearInterval(timerCheck);
-                    finishRecharge();
-                } else {
-                    document.getElementById('seconds').innerText = timeLeft;
-                }
-            }, 1000);
-        }
-
-        function finishRecharge() {
-            isRecharging = false;
-            document.getElementById('timer-box').style.display = "none";
-            userRef.update({ energy: 10, rechargeFinishTime: null });
-        }
+        function startRecharge() { userRef.update({ energy: 10 }); }
     </script>
 </body>
 </html>
